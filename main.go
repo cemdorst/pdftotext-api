@@ -9,6 +9,7 @@ import (
 	"os/exec"
 )
 
+// pdftotextHandler is the handler function for the /pdftotext endpoint.
 func pdftotextHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body to get the PDF file content.
 	file, _, err := r.FormFile("pdf")
@@ -41,10 +42,6 @@ func pdftotextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set response content type to plain text.
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-	// Write the PDF text to the response.
 	_, err = w.Write(output)
 	if err != nil {
 		http.Error(w, "Failed to write response", http.StatusInternalServerError)
@@ -52,12 +49,31 @@ func pdftotextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func corsHandler(h http.Handler, origin string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "POST")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Max-Age", "86400")
+			h.ServeHTTP(w, r)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Max-Age", "86400")
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+}
+
 func main() {
 	// Register the /pdftotxt endpoint to the pdftotextHandler function.
-	http.HandleFunc("/pdftotxt", pdftotextHandler)
 
-	// Start the server on port 8080.
+	http.HandleFunc("/pdftotext", corsHandler(http.HandlerFunc(pdftotextHandler), "*"))
+
 	fmt.Println("Server listening on port 8080")
+
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Printf("Failed to start server: %v\n", err)
